@@ -24,8 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function HistoryPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [history, setHistory] = useState<AnalysisHistoryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -34,22 +38,30 @@ export default function HistoryPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
     async function fetchHistory() {
-      try {
-        const historyData = await getAnalysisHistory();
-        setHistory(historyData);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch analysis history.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+      if (user) {
+        try {
+          const historyData = await getAnalysisHistory(user.uid);
+          setHistory(historyData);
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to fetch analysis history.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
       }
     }
     fetchHistory();
-  }, [toast]);
+  }, [user, toast]);
   
   const handleSummarize = async () => {
     if (history.length === 0) {
@@ -83,6 +95,24 @@ export default function HistoryPage() {
     }
   };
 
+  if (authLoading || isLoading) {
+    return (
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-14 w-full mt-4" />
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+     return null;
+  }
+
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
@@ -103,13 +133,7 @@ export default function HistoryPage() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-        </div>
-      ) : history.length === 0 ? (
+      {history.length === 0 ? (
         <Card className="text-center py-12">
            <CardHeader>
             <CardTitle>No History Found</CardTitle>

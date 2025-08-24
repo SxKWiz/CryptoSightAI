@@ -1,5 +1,13 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  type User,
+} from "firebase/auth";
+import {
   getFirestore,
   collection,
   addDoc,
@@ -7,8 +15,9 @@ import {
   query,
   orderBy,
   Timestamp,
+  where,
 } from "firebase/firestore";
-import type { AnalysisHistoryRecord } from "@/types";
+import type { AnalysisHistoryRecord, SignUpData, LoginData } from "@/types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -21,9 +30,28 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 const historyCollection = collection(db, "analysisHistory");
+
+// Auth functions
+export const signUpUser = (data: SignUpData) => {
+  return createUserWithEmailAndPassword(auth, data.email, data.password);
+};
+
+export const signInUser = (data: LoginData) => {
+  return signInWithEmailAndPassword(auth, data.email, data.password);
+};
+
+export const signOutUser = () => {
+  return signOut(auth);
+};
+
+export const onAuthStateChange = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
+
 
 /**
  * Adds a new analysis record to the Firestore database.
@@ -31,6 +59,9 @@ const historyCollection = collection(db, "analysisHistory");
  */
 export async function addAnalysisHistory(record: Omit<AnalysisHistoryRecord, 'id'>): Promise<void> {
   try {
+    if (!record.userId) {
+      throw new Error("User ID is required to save analysis history.");
+    }
     await addDoc(historyCollection, {
       ...record,
       createdAt: Timestamp.fromDate(record.createdAt),
@@ -42,18 +73,26 @@ export async function addAnalysisHistory(record: Omit<AnalysisHistoryRecord, 'id
 }
 
 /**
- * Retrieves all analysis history records from Firestore, ordered by creation date.
+ * Retrieves all analysis history records from Firestore for a specific user, ordered by creation date.
+ * @param userId The ID of the user whose history to retrieve.
  * @returns A promise that resolves to an array of analysis history records.
  */
-export async function getAnalysisHistory(): Promise<AnalysisHistoryRecord[]> {
+export async function getAnalysisHistory(userId: string): Promise<AnalysisHistoryRecord[]> {
   try {
-    const q = query(historyCollection, orderBy("createdAt", "desc"));
+    if (!userId) return [];
+    
+    const q = query(
+      historyCollection, 
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
+        userId: data.userId,
         tradingPair: data.tradingPair,
         analysisSummary: data.analysisSummary,
         tradeSignal: data.tradeSignal,

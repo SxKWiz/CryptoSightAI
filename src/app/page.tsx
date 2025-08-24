@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,10 +24,13 @@ import { analyzeCryptoChart } from "@/ai/flows/analyze-crypto-chart";
 import { addAnalysisHistory } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Zap } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import Link from "next/link";
 
 const tradingPairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
 
 export default function Home() {
+  const { user } = useAuth();
   const [tradingPair, setTradingPair] = useState("BTCUSDT");
   const [chartData, setChartData] = useState<CandleData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +38,14 @@ export default function Home() {
   const { toast } = useToast();
 
   const handleAnalyze = async () => {
+    if (!user) {
+       toast({
+        title: "Authentication Required",
+        description: "Please log in to analyze charts.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (chartData.length === 0) {
       toast({
         title: "Error",
@@ -52,6 +63,7 @@ export default function Home() {
       });
       setAnalysisResult(result);
       await addAnalysisHistory({
+        userId: user.uid,
         tradingPair,
         analysisSummary: result.analysisSummary,
         tradeSignal: result.tradeSignal,
@@ -114,6 +126,22 @@ export default function Home() {
           </div>
         </CardContent>
       </Card>
+
+       {!user && (
+          <Card className="text-center py-12">
+            <CardHeader>
+              <CardTitle>Welcome to CryptoSight AI</CardTitle>
+              <CardDescription>
+                Please log in or sign up to save and review your analysis history.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Link href="/login" passHref>
+                  <Button>Login</Button>
+                </Link>
+            </CardContent>
+          </Card>
+      )}
       
       {isLoading && (
         <Card>
