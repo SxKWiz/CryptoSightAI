@@ -103,6 +103,12 @@ export default function Home() {
             description: "Please log in to analyze charts.",
             variant: "destructive",
           });
+          // Clear timeout and reset loading state
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+          }
+          setIsLoading(false);
         }
         return;
       }
@@ -114,6 +120,12 @@ export default function Home() {
             description: "Chart data is not loaded yet. Please wait.",
             variant: "destructive",
           });
+          // Clear timeout and reset loading state
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+          }
+          setIsLoading(false);
         }
         return;
       }
