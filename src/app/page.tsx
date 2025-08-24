@@ -112,6 +112,8 @@ export default function Home() {
           tradingPair,
           analysisSummary: result.analysisSummary,
           tradeSignal: result.tradeSignal,
+          riskLevel: result.riskLevel,
+          confidenceLevel: result.confidenceLevel,
           createdAt: new Date(),
         });
       }

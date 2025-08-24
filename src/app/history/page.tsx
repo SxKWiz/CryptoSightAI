@@ -16,7 +16,7 @@ import { getAnalysisHistory } from "@/lib/firebase";
 import { summarizeAnalysisHistory } from "@/ai/flows/summarize-analysis-history";
 import type { AnalysisHistoryRecord } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, ShieldCheck, Signal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
   const { user, loading: authLoading } = useAuth();
@@ -112,6 +113,15 @@ export default function HistoryPage() {
   if (!user) {
      return null;
   }
+  
+  const getRiskColor = (riskLevel: 'Low' | 'Medium' | 'High') => {
+    switch(riskLevel) {
+      case 'Low': return 'text-green-400';
+      case 'Medium': return 'text-yellow-400';
+      case 'High': return 'text-red-400';
+      default: return 'text-muted-foreground';
+    }
+  }
 
 
   return (
@@ -148,12 +158,24 @@ export default function HistoryPage() {
             <AccordionItem value={record.id!} key={record.id} className="border-b-0">
               <Card>
                 <AccordionTrigger className="p-6 text-left hover:no-underline">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline">{record.tradingPair}</Badge>
-                      <p className="font-medium truncate max-w-xs md:max-w-md">{record.analysisSummary}</p>
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between w-full gap-4">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline">{record.tradingPair}</Badge>
+                        <p className="font-medium text-left">{record.analysisSummary}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1.5 text-blue-400">
+                          <ShieldCheck className="h-4 w-4" />
+                          <span>{record.confidenceLevel} Confidence</span>
+                        </div>
+                        <div className={cn("flex items-center gap-1.5", getRiskColor(record.riskLevel))}>
+                          <Signal className="h-4 w-4" />
+                          <span>{record.riskLevel} Risk</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground hidden md:block">
+                    <p className="text-sm text-muted-foreground self-start md:self-center shrink-0">
                       {format(record.createdAt, "PPP p")}
                     </p>
                   </div>

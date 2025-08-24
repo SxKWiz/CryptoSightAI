@@ -20,6 +20,8 @@ export interface TradeSignal {
 export interface AnalysisResult {
   analysisSummary: string;
   tradeSignal: TradeSignal;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  confidenceLevel: string;
 }
 
 export interface AnalysisHistoryRecord {
@@ -28,6 +30,8 @@ export interface AnalysisHistoryRecord {
   tradingPair: string;
   analysisSummary: string;
   tradeSignal: TradeSignal;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  confidenceLevel: string;
   createdAt: Date;
 }
 

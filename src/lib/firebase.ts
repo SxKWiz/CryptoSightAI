@@ -96,6 +96,8 @@ export async function getAnalysisHistory(userId: string): Promise<AnalysisHistor
         tradingPair: data.tradingPair,
         analysisSummary: data.analysisSummary,
         tradeSignal: data.tradeSignal,
+        riskLevel: data.riskLevel,
+        confidenceLevel: data.confidenceLevel,
         createdAt: (data.createdAt as Timestamp).toDate(),
       } as AnalysisHistoryRecord;
     });

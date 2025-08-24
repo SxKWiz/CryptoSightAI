@@ -19,6 +19,8 @@ export type AnalyzeCryptoChartInput = z.infer<typeof AnalyzeCryptoChartInputSche
 
 const AnalyzeCryptoChartOutputSchema = z.object({
   analysisSummary: z.string().describe('A summary of the AI analysis of the chart.'),
+  riskLevel: z.enum(['Low', 'Medium', 'High']).describe('The assessed risk level of the trade.'),
+  confidenceLevel: z.string().describe('The AI\'s confidence in this analysis, as a percentage (e.g., "85%").'),
   tradeSignal: z.object({
     entryPriceRange: z.string().describe('The recommended entry price range.'),
     takeProfitLevels: z.array(z.string()).describe('Recommended take profit levels.'),
@@ -42,7 +44,7 @@ Chart Data (OHLCV):
 
 Trading Pair: {{tradingPair}}
 
-Provide a summary analysis of the chart, and a trade signal including entry price range, take profit levels, and stop loss. Be very strict and do not add any randomness.
+Provide a summary analysis of the chart. Assess the risk of the potential trade as 'Low', 'Medium', or 'High'. Provide a confidence level as a percentage. Finally, generate a trade signal including entry price range, take profit levels, and stop loss. Be very strict and do not add any randomness.
 
 Output:
 `,config: {
