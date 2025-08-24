@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -19,11 +20,11 @@ import {
 import { CryptoChart } from "@/components/crypto-chart";
 import { AnalysisResultCard } from "@/components/analysis-result-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CandleData, AnalysisResult } from "@/types";
+import type { CandleData, AnalysisResult, Indicator, PriceAlert } from "@/types";
 import { analyzeCryptoChart } from "@/ai/flows/analyze-crypto-chart";
 import { addAnalysisHistory } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Zap, Settings2 } from "lucide-react";
+import { Loader2, Zap, Settings2, Bell, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
@@ -40,7 +41,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Indicator } from "@/types";
+import { format } from "date-fns";
 
 
 const tradingPairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
@@ -55,6 +56,10 @@ export default function Home() {
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
+  const [latestPrice, setLatestPrice] = useState<number | null>(null);
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
+  const alertedLevels = useRef(new Set<string>());
+
   const { toast } = useToast();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -83,6 +88,8 @@ export default function Home() {
     if (!isAutoRefresh) {
       setIsLoading(true);
       setAnalysisResult(null);
+      setPriceAlerts([]);
+      alertedLevels.current.clear();
     }
 
     try {
@@ -119,7 +126,6 @@ export default function Home() {
     }
   }, [user, chartData, tradingPair, toast]);
   
-  
    useEffect(() => {
     // Clear interval on component unmount, or when dependencies change
     return () => {
@@ -146,10 +152,60 @@ export default function Home() {
     };
   }, [isAutoRefreshing, analysisResult, handleAnalyze]);
   
+  // Effect to check for price alerts
+  useEffect(() => {
+    if (!latestPrice || !analysisResult) return;
+
+    const { tradeSignal } = analysisResult;
+    const { takeProfitLevels, stopLoss } = tradeSignal;
+
+    const numericStopLoss = parseFloat(stopLoss.replace(/[^0-9.-]+/g, ""));
+    const lastPrice = latestPrice;
+    
+    // Check Stop Loss
+    if (lastPrice <= numericStopLoss && !alertedLevels.current.has(`sl-${stopLoss}`)) {
+      const newAlert = {
+        level: stopLoss,
+        type: "stopLoss" as "stopLoss",
+        price: lastPrice,
+        timestamp: new Date(),
+      };
+      setPriceAlerts(prev => [...prev, newAlert]);
+      alertedLevels.current.add(`sl-${stopLoss}`);
+      toast({
+        title: "Stop Loss Hit",
+        description: `Price reached the stop loss level of ${stopLoss} at ${lastPrice.toFixed(2)}.`,
+        variant: "destructive",
+      });
+    }
+
+    // Check Take Profit Levels
+    takeProfitLevels.forEach(level => {
+      const numericLevel = parseFloat(level.replace(/[^0-9.-]+/g, ""));
+      if (lastPrice >= numericLevel && !alertedLevels.current.has(`tp-${level}`)) {
+         const newAlert = {
+          level: level,
+          type: "takeProfit" as "takeProfit",
+          price: lastPrice,
+          timestamp: new Date(),
+        };
+        setPriceAlerts(prev => [...prev, newAlert]);
+        alertedLevels.current.add(`tp-${level}`);
+        toast({
+          title: "Take Profit Hit!",
+          description: `Price reached the take profit level of ${level} at ${lastPrice.toFixed(2)}.`,
+        });
+      }
+    });
+
+  }, [latestPrice, analysisResult, toast]);
+  
    const handleTradingPairChange = (pair: string) => {
     setTradingPair(pair);
     setAnalysisResult(null);
     setIsAutoRefreshing(false); // Turn off auto-refresh when pair changes
+    setPriceAlerts([]);
+    alertedLevels.current.clear();
   };
 
   const handleIntervalChange = (value: string) => {
@@ -157,6 +213,8 @@ export default function Home() {
       setInterval(value);
       setAnalysisResult(null);
       setIsAutoRefreshing(false);
+      setPriceAlerts([]);
+      alertedLevels.current.clear();
     }
   };
   
@@ -248,6 +306,7 @@ export default function Home() {
               interval={interval}
               onDataLoaded={setChartData}
               indicators={activeIndicators}
+              onPriceUpdate={setLatestPrice}
             />
           </div>
         </CardContent>
@@ -284,6 +343,45 @@ export default function Home() {
       )}
 
       {analysisResult && <AnalysisResultCard result={analysisResult} />}
+      
+      {analysisResult && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Bell className="mr-2 h-5 w-5" />
+              Notifications
+            </CardTitle>
+            <CardDescription>
+              Price alerts based on the current trade signal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {priceAlerts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No price alerts yet. Watching for target hits...</p>
+            ) : (
+              <ul className="space-y-3">
+                {priceAlerts.map((alert, index) => (
+                  <li key={index} className="flex items-start space-x-3 text-sm">
+                    {alert.type === 'takeProfit' ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {alert.type === 'takeProfit' ? 'Take Profit' : 'Stop Loss'} Hit: <span className="font-bold">{alert.level}</span>
+                      </p>
+                      <p className="text-muted-foreground">
+                        Price reached {alert.price.toFixed(2)} at {format(alert.timestamp, "PPP p")}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

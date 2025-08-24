@@ -1,3 +1,4 @@
+
 import type { Time } from 'lightweight-charts';
 import type { z } from 'zod';
 import type { signUpSchema, loginSchema } from '@/lib/validation';
@@ -34,3 +35,10 @@ export type SignUpData = z.infer<typeof signUpSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 
 export type Indicator = 'RSI'; // Add other indicators like 'MACD' here in the future
+
+export interface PriceAlert {
+  level: string;
+  type: 'takeProfit' | 'stopLoss';
+  price: number;
+  timestamp: Date;
+}
