@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -26,6 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Zap } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const tradingPairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
 
@@ -34,51 +36,103 @@ export default function Home() {
   const [tradingPair, setTradingPair] = useState("BTCUSDT");
   const [chartData, setChartData] = useState<CandleData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const { toast } = useToast();
-
-  const handleAnalyze = async () => {
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const handleAnalyze = useCallback(async (isAutoRefresh = false) => {
     if (!user) {
-       toast({
-        title: "Authentication Required",
-        description: "Please log in to analyze charts.",
-        variant: "destructive",
-      });
+       if (!isAutoRefresh) {
+         toast({
+          title: "Authentication Required",
+          description: "Please log in to analyze charts.",
+          variant: "destructive",
+        });
+       }
       return;
     }
     if (chartData.length === 0) {
-      toast({
-        title: "Error",
-        description: "Chart data is not loaded yet. Please wait.",
-        variant: "destructive",
-      });
+      if (!isAutoRefresh) {
+        toast({
+          title: "Error",
+          description: "Chart data is not loaded yet. Please wait.",
+          variant: "destructive",
+        });
+      }
       return;
     }
-    setIsLoading(true);
-    setAnalysisResult(null);
+
+    if (!isAutoRefresh) {
+      setIsLoading(true);
+      setAnalysisResult(null);
+    }
+
     try {
       const result = await analyzeCryptoChart({
         chartData: JSON.stringify(chartData.slice(-100)), // Use last 100 candles for analysis
         tradingPair,
       });
       setAnalysisResult(result);
-      await addAnalysisHistory({
-        userId: user.uid,
-        tradingPair,
-        analysisSummary: result.analysisSummary,
-        tradeSignal: result.tradeSignal,
-        createdAt: new Date(),
-      });
+
+       if (!isAutoRefresh) {
+        await addAnalysisHistory({
+          userId: user.uid,
+          tradingPair,
+          analysisSummary: result.analysisSummary,
+          tradeSignal: result.tradeSignal,
+          createdAt: new Date(),
+        });
+      }
     } catch (error) {
       console.error("Analysis failed:", error);
-      toast({
-        title: "Analysis Failed",
-        description: "Could not analyze the chart data. Please try again.",
-        variant: "destructive",
-      });
+      if (!isAutoRefresh) {
+        toast({
+          title: "Analysis Failed",
+          description: "Could not analyze the chart data. Please try again.",
+          variant: "destructive",
+        });
+      }
+       // Stop auto-refresh on error
+      setIsAutoRefreshing(false);
     } finally {
-      setIsLoading(false);
+      if (!isAutoRefresh) {
+        setIsLoading(false);
+      }
     }
+  }, [user, chartData, tradingPair, toast]);
+  
+  
+   useEffect(() => {
+    // Clear interval on component unmount, or when dependencies change
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    if (isAutoRefreshing && analysisResult) {
+      intervalRef.current = setInterval(() => {
+        handleAnalyze(true);
+      }, 60000); // 1 minute
+    }
+     // Cleanup on tradingPair change
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isAutoRefreshing, analysisResult, handleAnalyze]);
+  
+   const handleTradingPairChange = (pair: string) => {
+    setTradingPair(pair);
+    setAnalysisResult(null);
+    setIsAutoRefreshing(false); // Turn off auto-refresh when pair changes
   };
 
   return (
@@ -93,7 +147,16 @@ export default function Home() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <Select value={tradingPair} onValueChange={setTradingPair}>
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="auto-refresh-switch" 
+              checked={isAutoRefreshing}
+              onCheckedChange={setIsAutoRefreshing}
+              disabled={!analysisResult}
+            />
+            <Label htmlFor="auto-refresh-switch">Auto-Refresh Analysis</Label>
+          </div>
+          <Select value={tradingPair} onValueChange={handleTradingPairChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select pair" />
             </SelectTrigger>
@@ -105,7 +168,7 @@ export default function Home() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={handleAnalyze} disabled={isLoading} className="min-w-[120px]">
+          <Button onClick={() => handleAnalyze(false)} disabled={isLoading} className="min-w-[120px]">
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
