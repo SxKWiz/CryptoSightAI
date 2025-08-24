@@ -72,10 +72,27 @@ export default function Home() {
 
   const { toast } = useToast();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleAnalyze = useCallback(async (isAutoRefresh = false) => {
+    // Prevent multiple simultaneous analyses
+    if (isLoading && !isAutoRefresh) {
+      return;
+    }
+
     if (!isAutoRefresh) {
       setIsLoading(true);
+      
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set a safety timeout
+      timeoutRef.current = setTimeout(() => {
+        setIsLoading(false);
+        console.warn("Analysis timeout - resetting loading state");
+      }, 30000); // 30 seconds timeout
     }
 
     try {
@@ -86,7 +103,6 @@ export default function Home() {
             description: "Please log in to analyze charts.",
             variant: "destructive",
           });
-          setIsLoading(false);
         }
         return;
       }
@@ -98,7 +114,6 @@ export default function Home() {
             description: "Chart data is not loaded yet. Please wait.",
             variant: "destructive",
           });
-          setIsLoading(false);
         }
         return;
       }
@@ -143,10 +158,15 @@ export default function Home() {
       setIsAutoRefreshing(false);
     } finally {
       if (!isAutoRefresh) {
+        // Clear the timeout since we're done
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
         setIsLoading(false);
       }
     }
-  }, [user, chartData, tradingPair, toast, tradingStyle, riskTolerance]);
+  }, [user, chartData, tradingPair, toast, tradingStyle, riskTolerance, isLoading]);
   
    useEffect(() => {
     // Clear interval on component unmount, or when dependencies change
@@ -154,6 +174,11 @@ export default function Home() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Reset loading state on cleanup
+      setIsLoading(false);
     };
   }, []);
 
@@ -171,6 +196,11 @@ export default function Home() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Reset loading state when dependencies change
+      setIsLoading(false);
     };
   }, [isAutoRefreshing, analysisResult, handleAnalyze]);
   
