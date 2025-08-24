@@ -28,12 +28,18 @@ import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group"
 
 const tradingPairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
+const intervals = ["1d", "4h", "1h"];
 
 export default function Home() {
   const { user } = useAuth();
   const [tradingPair, setTradingPair] = useState("BTCUSDT");
+  const [interval, setInterval] = useState("1d");
   const [chartData, setChartData] = useState<CandleData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
@@ -75,7 +81,7 @@ export default function Home() {
       });
       setAnalysisResult(result);
 
-       if (!isAutoRefresh) {
+       if (!isAutoRefresh && user) {
         await addAnalysisHistory({
           userId: user.uid,
           tradingPair,
@@ -135,6 +141,14 @@ export default function Home() {
     setIsAutoRefreshing(false); // Turn off auto-refresh when pair changes
   };
 
+  const handleIntervalChange = (value: string) => {
+    if (value) {
+      setInterval(value);
+      setAnalysisResult(null);
+      setIsAutoRefreshing(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4 mb-6">
@@ -180,10 +194,20 @@ export default function Home() {
       </div>
 
       <Card className="mb-6">
+        <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
+           <ToggleGroup type="single" value={interval} onValueChange={handleIntervalChange} aria-label="Chart Interval">
+            {intervals.map((item) => (
+              <ToggleGroupItem key={item} value={item} aria-label={`Select ${item}`}>
+                {item.toUpperCase()}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </CardHeader>
         <CardContent className="p-0">
           <div className="h-[400px] lg:h-[600px] w-full">
             <CryptoChart
               tradingPair={tradingPair}
+              interval={interval}
               onDataLoaded={setChartData}
             />
           </div>

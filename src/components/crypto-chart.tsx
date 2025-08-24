@@ -9,10 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface CryptoChartProps {
   tradingPair: string;
+  interval: string;
   onDataLoaded: (data: CandleData[]) => void;
 }
 
-export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
+export function CryptoChart({ tradingPair, interval, onDataLoaded }: CryptoChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -82,7 +83,7 @@ export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
       if (!candlestickSeriesRef.current) return;
       
       setLoading(true);
-      const data = await fetchKlines(tradingPair, "1d", 200);
+      const data = await fetchKlines(tradingPair, interval, 200);
       
       if (isMounted) {
         if (candlestickSeriesRef.current) {
@@ -101,7 +102,7 @@ export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
       
       // Connect to WebSocket
       const symbol = tradingPair.toLowerCase();
-      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@kline_1d`);
+      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@kline_${interval}`);
       
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
@@ -132,7 +133,7 @@ export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
         ws.close();
       }
     };
-  }, [tradingPair, onDataLoaded]);
+  }, [tradingPair, interval, onDataLoaded]);
   
   return (
     <div className="relative w-full h-full">
