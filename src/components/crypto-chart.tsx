@@ -100,23 +100,26 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
             top: 0.8,
             bottom: 0,
         },
+        visible: true,
       });
       
-      const rsi = RSI.calculate({
-        values: historicalData.map(d => d.close),
-        period: 14
-      });
-      
-      const rsiData: LineData<Time>[] = rsi.map((value, index) => ({
-        time: historicalData[index + 14 -1].time as Time,
-        value,
-      }));
-      rsiSeriesRef.current.setData(rsiData);
+      if (historicalData.length >= 14) {
+        const rsi = RSI.calculate({
+          values: historicalData.map(d => d.close),
+          period: 14
+        });
+        
+        const rsiData: LineData<Time>[] = rsi.map((value, index) => ({
+          time: historicalData[index + 14 -1].time as Time,
+          value,
+        }));
+        rsiSeriesRef.current.setData(rsiData);
+      }
 
     } else if (!indicators.includes("RSI") && rsiSeriesRef.current) {
       chartRef.current.removeSeries(rsiSeriesRef.current);
       rsiSeriesRef.current = null;
-       chartRef.current.removePriceScale('rsi');
+      chartRef.current.priceScale('rsi').applyOptions({ visible: false });
     }
 
   }, [indicators, historicalData]);
@@ -128,9 +131,17 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
     let ws: WebSocket | null = null;
     
     async function setupChart() {
-      if (!candlestickSeriesRef.current) return;
+      if (!candlestickSeriesRef.current || !chartRef.current) return;
       
       setLoading(true);
+
+      // Reset indicator series when pair or interval changes
+      if (rsiSeriesRef.current) {
+        chartRef.current.removeSeries(rsiSeriesRef.current);
+        rsiSeriesRef.current = null;
+        chartRef.current.priceScale('rsi').applyOptions({ visible: false });
+      }
+
       const data = await fetchKlines(tradingPair, interval, 200);
       
       if (isMounted) {
@@ -172,13 +183,6 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
       ws.onerror = (error) => {
         console.error("WebSocket Error:", error);
       };
-    }
-    
-    // Reset indicator series when pair or interval changes
-    if (chartRef.current && rsiSeriesRef.current) {
-        chartRef.current.removeSeries(rsiSeriesRef.current);
-        rsiSeriesRef.current = null;
-        chartRef.current.removePriceScale('rsi');
     }
 
     setupChart();
