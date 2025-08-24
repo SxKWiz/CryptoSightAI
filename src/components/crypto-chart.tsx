@@ -24,8 +24,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
   const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [historicalData, setHistoricalData] = useState<CandleData[]>([]);
-  const [rsiPriceScale, setRsiPriceScale] = useState<PriceScaleApi | null>(null);
-
+  
   // Initialize chart
   useEffect(() => {
     const initChart = () => {
@@ -85,11 +84,10 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
   useEffect(() => {
     if (!chartRef.current || historicalData.length === 0) return;
 
+    const rsiPriceScale = chartRef.current.priceScale('rsi');
+
     // Handle RSI
     if (indicators.includes("RSI") && !rsiSeriesRef.current) {
-      const newRsiPriceScale = chartRef.current.priceScale('rsi');
-      setRsiPriceScale(newRsiPriceScale);
-
       rsiSeriesRef.current = chartRef.current.addLineSeries({
         color: '#FFD700',
         lineWidth: 2,
@@ -100,7 +98,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
             minMove: 0.01,
         },
       });
-       newRsiPriceScale.applyOptions({
+       rsiPriceScale.applyOptions({
         scaleMargins: {
             top: 0.8,
             bottom: 0,
@@ -124,12 +122,10 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
     } else if (!indicators.includes("RSI") && rsiSeriesRef.current) {
       chartRef.current.removeSeries(rsiSeriesRef.current);
       rsiSeriesRef.current = null;
-      if (rsiPriceScale) {
-        rsiPriceScale.applyOptions({ visible: false });
-      }
+      rsiPriceScale.applyOptions({ visible: false });
     }
 
-  }, [indicators, historicalData, rsiPriceScale]);
+  }, [indicators, historicalData]);
 
 
   // Fetch historical data and set up WebSocket
@@ -146,11 +142,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
       if (rsiSeriesRef.current) {
         chartRef.current.removeSeries(rsiSeriesRef.current);
         rsiSeriesRef.current = null;
-        if (rsiPriceScale) {
-          rsiPriceScale.applyOptions({ visible: false });
-          // Invalidate the price scale state
-          setRsiPriceScale(null);
-        }
+        chartRef.current.priceScale('rsi').applyOptions({ visible: false });
       }
 
       const data = await fetchKlines(tradingPair, interval, 200);
