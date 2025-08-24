@@ -44,7 +44,12 @@ import {
 import { format } from "date-fns";
 
 
-const tradingPairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
+const tradingPairs = [
+  "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", 
+  "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "DOTUSDT", "MATICUSDT",
+  "SHIBUSDT", "TRXUSDT", "LTCUSDT", "LINKUSDT", "UNIUSDT",
+  "ATOMUSDT", "ETCUSDT", "BCHUSDT", "XLMUSDT", "NEARUSDT"
+];
 const intervals = ["1d", "4h", "1h"];
 
 export default function Home() {
