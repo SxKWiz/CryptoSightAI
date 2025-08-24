@@ -74,45 +74,49 @@ export default function Home() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleAnalyze = useCallback(async (isAutoRefresh = false) => {
-    if (!user) {
-       if (!isAutoRefresh) {
-         toast({
-          title: "Authentication Required",
-          description: "Please log in to analyze charts.",
-          variant: "destructive",
-        });
-       }
-      return;
-    }
-    if (chartData.length === 0) {
-      if (!isAutoRefresh) {
-        toast({
-          title: "Error",
-          description: "Chart data is not loaded yet. Please wait.",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-
     if (!isAutoRefresh) {
       setIsLoading(true);
-      setAnalysisResult(null);
-      setPriceAlerts([]);
-      setEntryPriceHit(false);
-      alertedLevels.current.clear();
     }
 
     try {
+      if (!user) {
+        if (!isAutoRefresh) {
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to analyze charts.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      if (chartData.length === 0) {
+        if (!isAutoRefresh) {
+          toast({
+            title: "Error",
+            description: "Chart data is not loaded yet. Please wait.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      if (!isAutoRefresh) {
+        setAnalysisResult(null);
+        setPriceAlerts([]);
+        setEntryPriceHit(false);
+        alertedLevels.current.clear();
+      }
+
       const result = await analyzeCryptoChart({
-        chartData: JSON.stringify(chartData.slice(-100)), // Use last 100 candles for analysis
+        chartData: JSON.stringify(chartData.slice(-100)),
         tradingPair,
         tradingStyle,
         riskTolerance,
       });
       setAnalysisResult(result);
 
-       if (!isAutoRefresh && user) {
+      if (!isAutoRefresh && user) {
         await addAnalysisHistory({
           userId: user.uid,
           tradingPair,
@@ -134,7 +138,6 @@ export default function Home() {
           variant: "destructive",
         });
       }
-       // Stop auto-refresh on error
       setIsAutoRefreshing(false);
     } finally {
       if (!isAutoRefresh) {
