@@ -18,6 +18,7 @@ export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize chart
   useEffect(() => {
     const initChart = () => {
       if (!chartContainerRef.current) return;
@@ -72,11 +73,17 @@ export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
     };
   }, []);
 
+  // Fetch historical data and set up WebSocket
   useEffect(() => {
     let isMounted = true;
-    async function getData() {
+    let ws: WebSocket | null = null;
+    
+    async function setupChart() {
+      if (!candlestickSeriesRef.current) return;
+      
       setLoading(true);
       const data = await fetchKlines(tradingPair, "1d", 200);
+      
       if (isMounted) {
         if (candlestickSeriesRef.current) {
           const formattedData: CandlestickData<Time>[] = data.map((d) => ({
@@ -91,12 +98,39 @@ export function CryptoChart({ tradingPair, onDataLoaded }: CryptoChartProps) {
         onDataLoaded(data);
         setLoading(false);
       }
+      
+      // Connect to WebSocket
+      const symbol = tradingPair.toLowerCase();
+      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@kline_1d`);
+      
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        const kline = message.k;
+        const candle: CandlestickData<Time> = {
+          time: kline.t / 1000 as Time,
+          open: parseFloat(kline.o),
+          high: parseFloat(kline.h),
+          low: parseFloat(kline.l),
+          close: parseFloat(kline.c),
+        };
+        
+        if (isMounted && candlestickSeriesRef.current) {
+          candlestickSeriesRef.current.update(candle);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error("WebSocket Error:", error);
+      };
     }
-    if (candlestickSeriesRef.current) {
-      getData();
-    }
+    
+    setupChart();
+    
     return () => {
       isMounted = false;
+      if (ws) {
+        ws.close();
+      }
     };
   }, [tradingPair, onDataLoaded]);
   
