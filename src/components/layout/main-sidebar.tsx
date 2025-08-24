@@ -11,7 +11,7 @@ import {
   SidebarFooter,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Home, History, Settings, Bot, LogIn, User, LogOut } from "lucide-react";
+import { Home, History, Settings, Bot, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,

@@ -99,8 +99,8 @@ export default function HistoryPage() {
     return (
       <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
         <div className="space-y-4">
-          <Skeleton className="h-10 w-1/3" />
-          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-10 w-3/3" />
+          <Skeleton className="h-6 w-2/2" />
           <Skeleton className="h-14 w-full mt-4" />
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
