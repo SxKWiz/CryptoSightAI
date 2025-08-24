@@ -32,3 +32,5 @@ export interface AnalysisHistoryRecord {
 
 export type SignUpData = z.infer<typeof signUpSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
+
+export type Indicator = 'RSI'; // Add other indicators like 'MACD' here in the future

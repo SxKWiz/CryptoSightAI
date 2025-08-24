@@ -23,7 +23,7 @@ import type { CandleData, AnalysisResult } from "@/types";
 import { analyzeCryptoChart } from "@/ai/flows/analyze-crypto-chart";
 import { addAnalysisHistory } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, Settings2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
@@ -31,7 +31,17 @@ import { Label } from "@/components/ui/label";
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from "@/components/ui/toggle-group"
+} from "@/components/ui/toggle-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { Indicator } from "@/types";
+
 
 const tradingPairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
 const intervals = ["1d", "4h", "1h"];
@@ -44,6 +54,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
   const { toast } = useToast();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -148,6 +159,15 @@ export default function Home() {
       setIsAutoRefreshing(false);
     }
   };
+  
+  const handleIndicatorToggle = (indicator: Indicator) => {
+    setActiveIndicators(prev => 
+      prev.includes(indicator) 
+        ? prev.filter(i => i !== indicator)
+        : [...prev, indicator]
+    );
+  };
+
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
@@ -202,6 +222,24 @@ export default function Home() {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
+           <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings2 className="mr-2 h-4 w-4" />
+                Indicators
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>Technical Indicators</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={activeIndicators.includes("RSI")}
+                onCheckedChange={() => handleIndicatorToggle("RSI")}
+              >
+                RSI
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardHeader>
         <CardContent className="p-0">
           <div className="h-[400px] lg:h-[600px] w-full">
@@ -209,6 +247,7 @@ export default function Home() {
               tradingPair={tradingPair}
               interval={interval}
               onDataLoaded={setChartData}
+              indicators={activeIndicators}
             />
           </div>
         </CardContent>
