@@ -38,7 +38,7 @@ export type Indicator = 'RSI'; // Add other indicators like 'MACD' here in the f
 
 export interface PriceAlert {
   level: string;
-  type: 'takeProfit' | 'stopLoss';
+  type: 'takeProfit' | 'stopLoss' | 'entry';
   price: number;
   timestamp: Date;
 }

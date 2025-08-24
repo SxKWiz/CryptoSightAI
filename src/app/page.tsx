@@ -24,7 +24,7 @@ import type { CandleData, AnalysisResult, Indicator, PriceAlert } from "@/types"
 import { analyzeCryptoChart } from "@/ai/flows/analyze-crypto-chart";
 import { addAnalysisHistory } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Zap, Settings2, Bell, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Zap, Settings2, Bell, AlertTriangle, CheckCircle2, ArrowDownRight } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
@@ -58,6 +58,7 @@ export default function Home() {
   const [activeIndicators, setActiveIndicators] = useState<Indicator[]>([]);
   const [latestPrice, setLatestPrice] = useState<number | null>(null);
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
+  const [entryPriceHit, setEntryPriceHit] = useState(false);
   const alertedLevels = useRef(new Set<string>());
 
   const { toast } = useToast();
@@ -89,6 +90,7 @@ export default function Home() {
       setIsLoading(true);
       setAnalysisResult(null);
       setPriceAlerts([]);
+      setEntryPriceHit(false);
       alertedLevels.current.clear();
     }
 
@@ -157,54 +159,80 @@ export default function Home() {
     if (!latestPrice || !analysisResult) return;
 
     const { tradeSignal } = analysisResult;
-    const { takeProfitLevels, stopLoss } = tradeSignal;
-
-    const numericStopLoss = parseFloat(stopLoss.replace(/[^0-9.-]+/g, ""));
+    const { entryPriceRange, takeProfitLevels, stopLoss } = tradeSignal;
     const lastPrice = latestPrice;
-    
-    // Check Stop Loss
-    if (lastPrice <= numericStopLoss && !alertedLevels.current.has(`sl-${stopLoss}`)) {
-      const newAlert = {
-        level: stopLoss,
-        type: "stopLoss" as "stopLoss",
-        price: lastPrice,
-        timestamp: new Date(),
-      };
-      setPriceAlerts(prev => [...prev, newAlert]);
-      alertedLevels.current.add(`sl-${stopLoss}`);
-      toast({
-        title: "Stop Loss Hit",
-        description: `Price reached the stop loss level of ${stopLoss} at ${lastPrice.toFixed(2)}.`,
-        variant: "destructive",
-      });
-    }
 
-    // Check Take Profit Levels
-    takeProfitLevels.forEach(level => {
-      const numericLevel = parseFloat(level.replace(/[^0-9.-]+/g, ""));
-      if (lastPrice >= numericLevel && !alertedLevels.current.has(`tp-${level}`)) {
-         const newAlert = {
-          level: level,
-          type: "takeProfit" as "takeProfit",
+    // 1. Check for entry price hit if not already hit
+    if (!entryPriceHit) {
+      const entryPrices = entryPriceRange.split('-').map(p => parseFloat(p.trim()));
+      const [entryStart, entryEnd] = entryPrices.length > 1 ? [Math.min(...entryPrices), Math.max(...entryPrices)] : [entryPrices[0], entryPrices[0]];
+
+      if (lastPrice >= entryStart && lastPrice <= entryEnd && !alertedLevels.current.has('entry')) {
+        setEntryPriceHit(true);
+        const newAlert: PriceAlert = {
+          level: entryPriceRange,
+          type: "entry",
           price: lastPrice,
           timestamp: new Date(),
         };
         setPriceAlerts(prev => [...prev, newAlert]);
-        alertedLevels.current.add(`tp-${level}`);
+        alertedLevels.current.add('entry');
         toast({
-          title: "Take Profit Hit!",
-          description: `Price reached the take profit level of ${level} at ${lastPrice.toFixed(2)}.`,
+          title: "Entry Price Hit!",
+          description: `Price entered the range ${entryPriceRange} at ${lastPrice.toFixed(2)}.`,
         });
       }
-    });
+    }
 
-  }, [latestPrice, analysisResult, toast]);
+    // 2. If entry price is hit, check for take profit and stop loss
+    if (entryPriceHit) {
+      const numericStopLoss = parseFloat(stopLoss.replace(/[^0-9.-]+/g, ""));
+      
+      // Check Stop Loss
+      if (lastPrice <= numericStopLoss && !alertedLevels.current.has(`sl-${stopLoss}`)) {
+        const newAlert: PriceAlert = {
+          level: stopLoss,
+          type: "stopLoss",
+          price: lastPrice,
+          timestamp: new Date(),
+        };
+        setPriceAlerts(prev => [...prev, newAlert]);
+        alertedLevels.current.add(`sl-${stopLoss}`);
+        toast({
+          title: "Stop Loss Hit",
+          description: `Price reached the stop loss level of ${stopLoss} at ${lastPrice.toFixed(2)}.`,
+          variant: "destructive",
+        });
+      }
+
+      // Check Take Profit Levels
+      takeProfitLevels.forEach(level => {
+        const numericLevel = parseFloat(level.replace(/[^0-9.-]+/g, ""));
+        if (lastPrice >= numericLevel && !alertedLevels.current.has(`tp-${level}`)) {
+           const newAlert: PriceAlert = {
+            level: level,
+            type: "takeProfit",
+            price: lastPrice,
+            timestamp: new Date(),
+          };
+          setPriceAlerts(prev => [...prev, newAlert]);
+          alertedLevels.current.add(`tp-${level}`);
+          toast({
+            title: "Take Profit Hit!",
+            description: `Price reached the take profit level of ${level} at ${lastPrice.toFixed(2)}.`,
+          });
+        }
+      });
+    }
+
+  }, [latestPrice, analysisResult, entryPriceHit, toast]);
   
    const handleTradingPairChange = (pair: string) => {
     setTradingPair(pair);
     setAnalysisResult(null);
     setIsAutoRefreshing(false); // Turn off auto-refresh when pair changes
     setPriceAlerts([]);
+    setEntryPriceHit(false);
     alertedLevels.current.clear();
   };
 
@@ -214,6 +242,7 @@ export default function Home() {
       setAnalysisResult(null);
       setIsAutoRefreshing(false);
       setPriceAlerts([]);
+      setEntryPriceHit(false);
       alertedLevels.current.clear();
     }
   };
@@ -225,6 +254,32 @@ export default function Home() {
         : [...prev, indicator]
     );
   };
+  
+  const getAlertIcon = (type: PriceAlert['type']) => {
+    switch(type) {
+      case 'entry':
+        return <ArrowDownRight className="h-5 w-5 text-blue-500 mt-0.5" />;
+      case 'takeProfit':
+        return <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />;
+      case 'stopLoss':
+        return <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />;
+      default:
+        return null;
+    }
+  }
+  
+  const getAlertTitle = (type: PriceAlert['type']) => {
+    switch(type) {
+      case 'entry':
+        return 'Entry Price Hit';
+      case 'takeProfit':
+        return 'Take Profit Hit';
+      case 'stopLoss':
+        return 'Stop Loss Hit';
+      default:
+        return '';
+    }
+  }
 
 
   return (
@@ -357,19 +412,17 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             {priceAlerts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No price alerts yet. Watching for target hits...</p>
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {analysisResult ? 'Watching for entry price...' : 'No price alerts yet.'}
+              </p>
             ) : (
               <ul className="space-y-3">
                 {priceAlerts.map((alert, index) => (
                   <li key={index} className="flex items-start space-x-3 text-sm">
-                    {alert.type === 'takeProfit' ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                    )}
+                    {getAlertIcon(alert.type)}
                     <div className="flex-1">
                       <p className="font-medium">
-                        {alert.type === 'takeProfit' ? 'Take Profit' : 'Stop Loss'} Hit: <span className="font-bold">{alert.level}</span>
+                        {getAlertTitle(alert.type)}: <span className="font-bold">{alert.level}</span>
                       </p>
                       <p className="text-muted-foreground">
                         Price reached {alert.price.toFixed(2)} at {format(alert.timestamp, "PPP p")}
