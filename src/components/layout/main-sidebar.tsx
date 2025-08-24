@@ -30,26 +30,32 @@ export function MainSidebar() {
       <SidebarContent>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/" legacyBehavior passHref>
+            <Link href="/" passHref>
               <SidebarMenuButton asChild isActive={pathname === "/"}>
-                <Home />
-                Home
+                <span>
+                  <Home />
+                  Home
+                </span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/history" legacyBehavior passHref>
+            <Link href="/history" passHref>
               <SidebarMenuButton asChild isActive={pathname === "/history"}>
-                <History />
-                Analysis History
+                <span>
+                  <History />
+                  Analysis History
+                </span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <Link href="/settings" legacyBehavior passHref>
+            <Link href="/settings" passHref>
               <SidebarMenuButton asChild isActive={pathname === "/settings"}>
-                <Settings />
-                Settings
+                <span>
+                  <Settings />
+                  Settings
+                </span>
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
