@@ -51,6 +51,8 @@ const tradingPairs = [
   "ATOMUSDT", "ETCUSDT", "BCHUSDT", "XLMUSDT", "NEARUSDT"
 ];
 const intervals = ["1d", "4h", "1h"];
+const tradingStyles = ["Day Trading", "Swing Trading", "Position Trading"];
+const riskTolerances = ["Conservative", "Moderate", "Aggressive"];
 
 export default function Home() {
   const { user } = useAuth();
@@ -64,6 +66,8 @@ export default function Home() {
   const [latestPrice, setLatestPrice] = useState<number | null>(null);
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
   const [entryPriceHit, setEntryPriceHit] = useState(false);
+  const [tradingStyle, setTradingStyle] = useState(tradingStyles[1]);
+  const [riskTolerance, setRiskTolerance] = useState(riskTolerances[1]);
   const alertedLevels = useRef(new Set<string>());
 
   const { toast } = useToast();
@@ -103,6 +107,8 @@ export default function Home() {
       const result = await analyzeCryptoChart({
         chartData: JSON.stringify(chartData.slice(-100)), // Use last 100 candles for analysis
         tradingPair,
+        tradingStyle,
+        riskTolerance,
       });
       setAnalysisResult(result);
 
@@ -115,6 +121,8 @@ export default function Home() {
           riskLevel: result.riskLevel,
           confidenceLevel: result.confidenceLevel,
           createdAt: new Date(),
+          tradingStyle,
+          riskTolerance,
         });
       }
     } catch (error) {
@@ -133,7 +141,7 @@ export default function Home() {
         setIsLoading(false);
       }
     }
-  }, [user, chartData, tradingPair, toast]);
+  }, [user, chartData, tradingPair, toast, tradingStyle, riskTolerance]);
   
    useEffect(() => {
     // Clear interval on component unmount, or when dependencies change
@@ -301,15 +309,6 @@ export default function Home() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="auto-refresh-switch" 
-              checked={isAutoRefreshing}
-              onCheckedChange={setIsAutoRefreshing}
-              disabled={!analysisResult}
-            />
-            <Label htmlFor="auto-refresh-switch">Auto-Refresh Analysis</Label>
-          </div>
           <Select value={tradingPair} onValueChange={handleTradingPairChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select pair" />
@@ -332,34 +331,64 @@ export default function Home() {
           </Button>
         </div>
       </div>
-
+      
       <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
-           <ToggleGroup type="single" value={interval} onValueChange={handleIntervalChange} aria-label="Chart Interval">
-            {intervals.map((item) => (
-              <ToggleGroupItem key={item} value={item} aria-label={`Select ${item}`}>
-                {item.toUpperCase()}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Settings2 className="mr-2 h-4 w-4" />
-                Indicators
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>Technical Indicators</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={activeIndicators.includes("RSI")}
-                onCheckedChange={() => handleIndicatorToggle("RSI")}
-              >
-                RSI
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <CardHeader className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-4 border-b">
+           <div className="flex items-center gap-4">
+              <ToggleGroup type="single" value={interval} onValueChange={handleIntervalChange} aria-label="Chart Interval">
+                {intervals.map((item) => (
+                  <ToggleGroupItem key={item} value={item} aria-label={`Select ${item}`}>
+                    {item.toUpperCase()}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    Indicators
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>Technical Indicators</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={activeIndicators.includes("RSI")}
+                    onCheckedChange={() => handleIndicatorToggle("RSI")}
+                  >
+                    RSI
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+           </div>
+           <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="trading-style" className="text-sm">Style</Label>
+                <Select value={tradingStyle} onValueChange={setTradingStyle}>
+                  <SelectTrigger id="trading-style" className="w-[160px]">
+                    <SelectValue placeholder="Style" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tradingStyles.map((style) => (
+                      <SelectItem key={style} value={style}>{style}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="risk-tolerance" className="text-sm">Risk</Label>
+                <Select value={riskTolerance} onValueChange={setRiskTolerance}>
+                  <SelectTrigger id="risk-tolerance" className="w-[140px]">
+                    <SelectValue placeholder="Risk" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {riskTolerances.map((risk) => (
+                      <SelectItem key={risk} value={risk}>{risk}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="h-[400px] lg:h-[600px] w-full">
@@ -418,6 +447,15 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="flex items-center space-x-2 mb-4">
+              <Switch 
+                id="auto-refresh-switch" 
+                checked={isAutoRefreshing}
+                onCheckedChange={setIsAutoRefreshing}
+                disabled={!analysisResult}
+              />
+              <Label htmlFor="auto-refresh-switch">Auto-Refresh Analysis & Alerts</Label>
+            </div>
             {priceAlerts.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 {analysisResult ? 'Watching for entry price...' : 'No price alerts yet.'}
@@ -445,3 +483,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

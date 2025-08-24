@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,7 +17,7 @@ import { getAnalysisHistory } from "@/lib/firebase";
 import { summarizeAnalysisHistory } from "@/ai/flows/summarize-analysis-history";
 import type { AnalysisHistoryRecord } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, ShieldCheck, Signal } from "lucide-react";
+import { Loader2, Sparkles, ShieldCheck, Signal, LineChart, TrendingUp } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -77,7 +78,7 @@ export default function HistoryPage() {
     try {
       const historyString = history
         .map(
-          (h) => `Date: ${h.createdAt.toISOString()}, Pair: ${h.tradingPair}, Summary: ${h.analysisSummary}`
+          (h) => `Date: ${h.createdAt.toISOString()}, Pair: ${h.tradingPair}, Style: ${h.tradingStyle}, Risk: ${h.riskTolerance}, Summary: ${h.analysisSummary}`
         )
         .join("\n---\n");
         
@@ -164,7 +165,7 @@ export default function HistoryPage() {
                         <Badge variant="outline">{record.tradingPair}</Badge>
                         <p className="font-medium text-left">{record.analysisSummary}</p>
                       </div>
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
                         <div className="flex items-center gap-1.5 text-blue-400">
                           <ShieldCheck className="h-4 w-4" />
                           <span>{record.confidenceLevel} Confidence</span>
@@ -172,6 +173,14 @@ export default function HistoryPage() {
                         <div className={cn("flex items-center gap-1.5", getRiskColor(record.riskLevel))}>
                           <Signal className="h-4 w-4" />
                           <span>{record.riskLevel} Risk</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-purple-400">
+                          <LineChart className="h-4 w-4" />
+                          <span>{record.tradingStyle}</span>
+                        </div>
+                         <div className="flex items-center gap-1.5 text-orange-400">
+                          <TrendingUp className="h-4 w-4" />
+                          <span>{record.riskTolerance}</span>
                         </div>
                       </div>
                     </div>
@@ -217,3 +226,5 @@ export default function HistoryPage() {
     </div>
   );
 }
+
+    

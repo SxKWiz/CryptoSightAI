@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
@@ -99,6 +100,8 @@ export async function getAnalysisHistory(userId: string): Promise<AnalysisHistor
         riskLevel: data.riskLevel,
         confidenceLevel: data.confidenceLevel,
         createdAt: (data.createdAt as Timestamp).toDate(),
+        tradingStyle: data.tradingStyle || 'Swing Trading', // Add default for old records
+        riskTolerance: data.riskTolerance || 'Moderate', // Add default for old records
       } as AnalysisHistoryRecord;
     });
   } catch (error) {
@@ -106,3 +109,5 @@ export async function getAnalysisHistory(userId: string): Promise<AnalysisHistor
     throw new Error("Failed to fetch analysis history.");
   }
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -14,6 +15,8 @@ import {z} from 'genkit';
 const AnalyzeCryptoChartInputSchema = z.object({
   chartData: z.string().describe('OHLCV chart data as a JSON string.'),
   tradingPair: z.string().describe('The trading pair being analyzed (e.g., BTCUSDT).'),
+  tradingStyle: z.enum(['Day Trading', 'Swing Trading', 'Position Trading']).describe('The user\'s preferred trading style.'),
+  riskTolerance: z.enum(['Conservative', 'Moderate', 'Aggressive']).describe('The user\'s risk tolerance.'),
 });
 export type AnalyzeCryptoChartInput = z.infer<typeof AnalyzeCryptoChartInputSchema>;
 
@@ -37,14 +40,21 @@ const prompt = ai.definePrompt({
   name: 'analyzeCryptoChartPrompt',
   input: {schema: AnalyzeCryptoChartInputSchema},
   output: {schema: AnalyzeCryptoChartOutputSchema},
-  prompt: `You are an expert crypto trading analyst. Analyze the provided candlestick chart data and generate a trade signal.
+  prompt: `You are an expert crypto trading analyst. Analyze the provided candlestick chart data and generate a trade signal tailored to the user's preferences.
+
+User Preferences:
+- Trading Style: {{tradingStyle}}
+- Risk Tolerance: {{riskTolerance}}
 
 Chart Data (OHLCV):
 {{chartData}}
 
 Trading Pair: {{tradingPair}}
 
-Provide a summary analysis of the chart. Assess the risk of the potential trade as 'Low', 'Medium', or 'High'. Provide a confidence level as a percentage. Finally, generate a trade signal including entry price range, take profit levels, and stop loss. Be very strict and do not add any randomness.
+Provide a summary analysis of the chart. Assess the risk of the potential trade as 'Low', 'Medium', or 'High'. Provide a confidence level as a percentage. 
+Finally, generate a trade signal including entry price range, take profit levels, and stop loss. 
+
+The generated signal MUST be appropriate for the user's {{tradingStyle}} style and {{riskTolerance}} risk tolerance. For example, a conservative, position-trading style should have wider stop losses and take-profit levels compared to an aggressive day-trading style. Be very strict and do not add any randomness.
 
 Output:
 `,config: {
@@ -80,3 +90,5 @@ const analyzeCryptoChartFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

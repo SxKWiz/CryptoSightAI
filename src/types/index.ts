@@ -33,6 +33,8 @@ export interface AnalysisHistoryRecord {
   riskLevel: 'Low' | 'Medium' | 'High';
   confidenceLevel: string;
   createdAt: Date;
+  tradingStyle: string;
+  riskTolerance: string;
 }
 
 export type SignUpData = z.infer<typeof signUpSchema>;
@@ -46,3 +48,5 @@ export interface PriceAlert {
   price: number;
   timestamp: Date;
 }
+
+    
