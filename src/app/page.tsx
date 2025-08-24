@@ -86,6 +86,7 @@ export default function Home() {
             description: "Please log in to analyze charts.",
             variant: "destructive",
           });
+          setIsLoading(false);
         }
         return;
       }
@@ -97,6 +98,7 @@ export default function Home() {
             description: "Chart data is not loaded yet. Please wait.",
             variant: "destructive",
           });
+          setIsLoading(false);
         }
         return;
       }
