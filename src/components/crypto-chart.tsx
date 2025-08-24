@@ -148,6 +148,8 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
         rsiSeriesRef.current = null;
         if (rsiPriceScale) {
           rsiPriceScale.applyOptions({ visible: false });
+          // Invalidate the price scale state
+          setRsiPriceScale(null);
         }
       }
 
@@ -202,7 +204,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
         ws.close();
       }
     };
-  }, [tradingPair, interval, onDataLoaded, rsiPriceScale]);
+  }, [tradingPair, interval, onDataLoaded]);
   
   return (
     <div className="relative w-full h-full">
