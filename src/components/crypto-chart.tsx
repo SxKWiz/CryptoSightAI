@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType } from "lightweight-charts";
-import type { IChartApi, ISeriesApi, CandlestickData, Time, LineData } from "lightweight-charts";
+import type { IChartApi, ISeriesApi, CandlestickData, Time, LineData, PriceScaleApi } from "lightweight-charts";
 import { fetchKlines } from "@/lib/binance";
 import type { CandleData, Indicator } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +24,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
   const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [historicalData, setHistoricalData] = useState<CandleData[]>([]);
+  const [rsiPriceScale, setRsiPriceScale] = useState<PriceScaleApi | null>(null);
 
   // Initialize chart
   useEffect(() => {
@@ -85,6 +87,9 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
 
     // Handle RSI
     if (indicators.includes("RSI") && !rsiSeriesRef.current) {
+      const newRsiPriceScale = chartRef.current.priceScale('rsi');
+      setRsiPriceScale(newRsiPriceScale);
+
       rsiSeriesRef.current = chartRef.current.addLineSeries({
         color: '#FFD700',
         lineWidth: 2,
@@ -95,7 +100,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
             minMove: 0.01,
         },
       });
-       chartRef.current.priceScale('rsi').applyOptions({
+       newRsiPriceScale.applyOptions({
         scaleMargins: {
             top: 0.8,
             bottom: 0,
@@ -119,10 +124,12 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
     } else if (!indicators.includes("RSI") && rsiSeriesRef.current) {
       chartRef.current.removeSeries(rsiSeriesRef.current);
       rsiSeriesRef.current = null;
-      chartRef.current.priceScale('rsi').applyOptions({ visible: false });
+      if (rsiPriceScale) {
+        rsiPriceScale.applyOptions({ visible: false });
+      }
     }
 
-  }, [indicators, historicalData]);
+  }, [indicators, historicalData, rsiPriceScale]);
 
 
   // Fetch historical data and set up WebSocket
@@ -139,7 +146,9 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
       if (rsiSeriesRef.current) {
         chartRef.current.removeSeries(rsiSeriesRef.current);
         rsiSeriesRef.current = null;
-        chartRef.current.priceScale('rsi').applyOptions({ visible: false });
+        if (rsiPriceScale) {
+          rsiPriceScale.applyOptions({ visible: false });
+        }
       }
 
       const data = await fetchKlines(tradingPair, interval, 200);
@@ -193,7 +202,7 @@ export function CryptoChart({ tradingPair, interval, onDataLoaded, indicators }:
         ws.close();
       }
     };
-  }, [tradingPair, interval, onDataLoaded]);
+  }, [tradingPair, interval, onDataLoaded, rsiPriceScale]);
   
   return (
     <div className="relative w-full h-full">
